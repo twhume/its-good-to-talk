@@ -1,10 +1,21 @@
 package org.tomhume.fbcall;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.BaseColumns;
 import android.provider.ContactsContract;
@@ -17,70 +28,144 @@ import android.widget.Button;
 import com.facebook.android.*;
 import com.facebook.android.Facebook.*;
 
-
 public class FacebookCallLoggerActivity extends Activity implements OnClickListener {
 
 	private static final String TAG = "FacebookCallLoggerActivity";
-    private Facebook facebook = new Facebook("429957320362642");
+	private Facebook facebook = new Facebook("429957320362642");
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
-        
-        Button button = (Button)findViewById(R.id.test_button);
-        button.setOnClickListener(this);
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
 
-        facebook.authorize(this, new DialogListener() {
-            @Override
-            public void onComplete(Bundle values) {}
+		Button button = (Button) findViewById(R.id.test_button);
+		button.setOnClickListener(this);
 
-            @Override
-            public void onFacebookError(FacebookError error) {}
+		facebook.authorize(this, new DialogListener() {
+			@Override
+			public void onComplete(Bundle values) {
+			}
 
-            @Override
-            public void onError(DialogError e) {}
+			@Override
+			public void onFacebookError(FacebookError error) {
+			}
 
-            @Override
-            public void onCancel() {}
-        });
-    }
-    
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        facebook.authorizeCallback(requestCode, resultCode, data);
-    }
+			@Override
+			public void onError(DialogError e) {
+			}
+
+			@Override
+			public void onCancel() {
+			}
+		});
+	}
+
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		facebook.authorizeCallback(requestCode, resultCode, data);
+	}
 
 	@Override
 	public void onClick(View v) {
 		Log.d(TAG, "CLICK!");
-		String name = getContactNameFromNumber("07929169110");
-//		String profileId = getProfileIdFromFacebook();
-		Log.d(TAG, "name="+name);
+		String[] names = getContactNameFromNumber("07929169110");
+		if (names == null) Log.d(TAG, "no names");
+		else Log.d(TAG, "names=" + joinStrings(names));
+		new GetFriendsTask().execute(names);
+
 	}
-	
-	public String getContactNameFromNumber(String number) {
-	    Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
-	    String name = "?";
 
-	    ContentResolver contentResolver = getContentResolver();
-	    Cursor contactLookup = contentResolver.query(uri, new String[] {BaseColumns._ID,
-	            ContactsContract.PhoneLookup.DISPLAY_NAME }, null, null, null);
+	class GetFriendsTask extends AsyncTask<String[], Void, List<DisplayableFriend>> {
 
-	    try {
-	        if (contactLookup != null && contactLookup.getCount() > 0) {
-	        		contactLookup.moveToNext();
-	        		name = contactLookup.getString(contactLookup.getColumnIndex(ContactsContract.Data.DISPLAY_NAME));
-	        	}
-	            Log.d(TAG, contactLookup.getString(contactLookup.getColumnIndex(BaseColumns._ID)));
-	    } finally {
-	        if (contactLookup != null) {
-	            contactLookup.close();
-	        }
+	    private Exception exception;
+
+	    protected List<DisplayableFriend> doInBackground(String[]... name) {
+			ArrayList<DisplayableFriend> ret = new ArrayList<DisplayableFriend>();
+
+			try {
+				for (int j = 0; j < name[0].length; j++) {
+					Bundle params = new Bundle();
+					params.putString("method", "fql.query");
+					String fql = "SELECT name,profile_url,pic_square FROM user WHERE name = '" + name[0][j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
+					Log.d(TAG, "FQL="+fql);
+					params.putString("query", fql);
+					String response = facebook.request(params);
+					Log.d(TAG, "got response " + response);
+					response = "{\"data\":" + response + "}";
+
+					JSONObject json = Util.parseJson(response);
+					JSONArray data = json.getJSONArray("data");
+
+					for (int i = 0, size = data.length(); i < size; i++) {
+						JSONObject friend = data.getJSONObject(i);
+						DisplayableFriend d = new DisplayableFriend();
+						d.picture = friend.getString("pic_square");
+						d.profile = friend.getString("profile_url");
+						d.name = friend.getString("name");
+						ret.add(d);
+						Log.d(TAG, "added friend " + d);
+					}
+				}
+			} catch (JSONException e) {
+				Log.e(TAG, "JSON Parsing error " + e);
+			} catch (MalformedURLException e) {
+				Log.e(TAG, "MalformedURLException " + e);
+			} catch (IOException e) {
+				Log.e(TAG, "IOException " + e);
+			}
+			return deduplicate(ret);
+		}
+
+	    protected void onPostExecute(List<DisplayableFriend> friends) {
+			for (DisplayableFriend df: friends) {
+				Log.d(TAG, "friend=" + df);
+			}
 	    }
-
-	    return name;
+	 }
+	
+	private List<DisplayableFriend> deduplicate(List<DisplayableFriend> list) {
+		Hashtable<String,Boolean> exists = new Hashtable<String, Boolean>();
+		for (DisplayableFriend df: list) {
+			if (exists.containsKey(df.profile)) list.remove(df);
+			exists.put(df.profile, new Boolean(true));
+		}
+		return list;
 	}
-    
+
+	private String joinStrings(String[] in) {
+		String ret = "";
+		for (int i = 0; i < in.length; i++) {
+			ret = ret + in[i] + ",";
+		}
+		if (ret.length() > 0) ret = ret.substring(0, ret.length() - 1);
+		return ret;
+	}
+
+	public String[] getContactNameFromNumber(String number) {
+		Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+		String[] names = null;
+
+		ContentResolver contentResolver = getContentResolver();
+		Cursor contactLookup = contentResolver.query(uri, new String[] { BaseColumns._ID,
+				ContactsContract.PhoneLookup.DISPLAY_NAME }, null, null, null);
+
+		try {
+			if (contactLookup != null && contactLookup.getCount() > 0) {
+				names = new String[contactLookup.getCount()];
+				for (int i = 0; i < contactLookup.getCount(); i++) {
+					contactLookup.moveToNext();
+					names[i] = contactLookup
+							.getString(contactLookup.getColumnIndex(ContactsContract.Data.DISPLAY_NAME));
+				}
+			}
+		} finally {
+			if (contactLookup != null) {
+				contactLookup.close();
+			}
+		}
+
+		return names;
+	}
+
 }
