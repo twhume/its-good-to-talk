@@ -1,5 +1,12 @@
 package org.tomhume.fbcall;
 
+/**
+ * Helper class to encapsulate a single friend, who can be displayed on-screen in a selection list
+ * 
+ * @author twhume
+ *
+ */
+
 public class DisplayableFriend {
 	public String id;
 	public String name;

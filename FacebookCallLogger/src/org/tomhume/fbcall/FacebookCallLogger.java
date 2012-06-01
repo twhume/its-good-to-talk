@@ -1,5 +1,9 @@
 package org.tomhume.fbcall;
 
+/**
+ * Handles the sending of an Action to Facebook, using the Open Graph API
+ */
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
@@ -28,7 +32,6 @@ public class FacebookCallLogger {
 	private static final String TAG = "FacebookCallLogger";
 	public static final String[] permissions = new String[] {"publish_stream", "publish_actions"};
 	public static Facebook facebook = new Facebook("429957320362642");
-
 	private Context ctx = null;
 	private String number = null;
 	
@@ -36,6 +39,10 @@ public class FacebookCallLogger {
 		this.ctx = c;
 		this.number = n;
 	}
+
+	/**
+	 * Kick everything off, if necessary
+	 */
 	
 	public void go() {
 		String[] names = getContactNameFromNumber(number);
@@ -44,6 +51,14 @@ public class FacebookCallLogger {
 		new GetFriendsTask().execute(names);
 	}
 	
+	/**
+	 * Background task which takes an array of names, looks them up in Facebook, and returns a list 
+	 * of DisplayableFriends with profile picture URLs, IDs, etc.
+	 * 
+	 * @author twhume
+	 *
+	 */
+	
 	class GetFriendsTask extends AsyncTask<String[], Void, List<DisplayableFriend>> {
 
 	    protected List<DisplayableFriend> doInBackground(String[]... name) {
@@ -51,16 +66,21 @@ public class FacebookCallLogger {
 			return friends;
 	    }
 	    
+	    /**
+	     * Do the look-up of all friends, using FQL
+	     * 
+	     * @param names array of friends names
+	     * @return
+	     */
 	    
-	    	
-	    private List<DisplayableFriend> getMatchingFriends(String[] name) {	
+	    private List<DisplayableFriend> getMatchingFriends(String[] names) {	
 			ArrayList<DisplayableFriend> ret = new ArrayList<DisplayableFriend>();
 
 			try {
-				for (int j = 0; j < name.length; j++) {
+				for (int j = 0; j < names.length; j++) {
 					Bundle params = new Bundle();
 					params.putString("method", "fql.query");
-					String fql = "SELECT uid,name,profile_url,pic_square FROM user WHERE name = '" + name[j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
+					String fql = "SELECT uid,name,profile_url,pic_square FROM user WHERE name = '" + names[j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
 					Log.d(TAG, "FQL="+fql);
 					params.putString("query", fql);
 					String response = facebook.request(params);
@@ -91,6 +111,12 @@ public class FacebookCallLogger {
 			return deduplicate(ret);
 		}
 
+	    /**
+	     * If we have no names in our list, do nothing;
+	     * If we have one, post an update to Facebook about them;
+	     * TODO: if we have more than one, pop up a dialog box so the user can choose which
+	     */
+	    
 		@Override
 		protected void onPostExecute(List<DisplayableFriend> result) {
     		// post to the wall
@@ -101,6 +127,13 @@ public class FacebookCallLogger {
 	    	}
 		}
 	 }
+
+	/**
+	 * Post to the Open Graph, to record a call having been made.
+	 * 
+	 * @author twhume
+	 *
+	 */
 	
 	class PostCallTask extends AsyncTask<DisplayableFriend, Void, Void> {
 
@@ -109,7 +142,7 @@ public class FacebookCallLogger {
 			Log.d(TAG, "PostCallTask()");
 			Bundle b = new Bundle();
 			b.putString("profile", params[0].profile);
-//			b.putString("tags", params[0].id);
+			b.putString("tags", params[0].id);
 			try {
 				String response = facebook.request("me/twh_call_logger:call", b, "POST");
 				Log.d(TAG, response);
@@ -123,6 +156,13 @@ public class FacebookCallLogger {
 
 	}
 	
+	/**
+	 * Takes a List of DisplayableFriends, which may contain duplicates, and returns a deduplicated list.
+	 * 
+	 * @param list
+	 * @return
+	 */
+	
 	private List<DisplayableFriend> deduplicate(List<DisplayableFriend> list) {
 		Hashtable<String,Boolean> exists = new Hashtable<String, Boolean>();
 		for (DisplayableFriend df: list) {
@@ -132,6 +172,13 @@ public class FacebookCallLogger {
 		return list;
 	}
 	
+	/**
+	 * Helper method to join some strings together 
+	 * 
+	 * @param in
+	 * @return
+	 */
+	
 	private String joinStrings(String[] in) {
 		String ret = "";
 		for (int i = 0; i < in.length; i++) {
@@ -140,6 +187,14 @@ public class FacebookCallLogger {
 		if (ret.length() > 0) ret = ret.substring(0, ret.length() - 1);
 		return ret;
 	}
+	
+	/**
+	 * Search the on-phone address book for all contacts who have the phone number provided.
+	 * Return an array of their names.
+	 * 
+	 * @param number
+	 * @return
+	 */
 
 	public String[] getContactNameFromNumber(String number) {
 		Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
