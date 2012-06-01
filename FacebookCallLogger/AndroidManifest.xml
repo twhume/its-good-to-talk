@@ -6,6 +6,10 @@
 
     <uses-sdk android:minSdkVersion="15" />
 
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    
     <application
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
@@ -18,8 +22,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <receiver android:name=".PhoneCallReporter">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+        
     </application>
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    
 </manifest>
