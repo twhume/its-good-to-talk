@@ -31,33 +31,23 @@ import com.facebook.android.Facebook.*;
 public class FacebookCallLoggerActivity extends Activity implements OnClickListener {
 
 	private static final String TAG = "FacebookCallLoggerActivity";
+	private static final String[] permissions = new String[] {"publish_stream", "publish_actions"};
 	private Facebook facebook = new Facebook("429957320362642");
-
+	private Button testButton  = null;
+	private Button logoutButton = null;
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		Button button = (Button) findViewById(R.id.test_button);
-		button.setOnClickListener(this);
+		testButton = (Button) findViewById(R.id.test_button);
+		testButton.setOnClickListener(this);
 
-		facebook.authorize(this, new DialogListener() {
-			@Override
-			public void onComplete(Bundle values) {
-			}
+		logoutButton = (Button) findViewById(R.id.logout_button);
+		logoutButton.setOnClickListener(this);
 
-			@Override
-			public void onFacebookError(FacebookError error) {
-			}
-
-			@Override
-			public void onError(DialogError e) {
-			}
-
-			@Override
-			public void onCancel() {
-			}
-		});
+		forceAuthorize();
 	}
 
 	@Override
@@ -68,12 +58,15 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 
 	@Override
 	public void onClick(View v) {
-		Log.d(TAG, "CLICK!");
-		String[] names = getContactNameFromNumber("07929169110");
-		if (names == null) Log.d(TAG, "no names");
-		else Log.d(TAG, "names=" + joinStrings(names));
-		new GetFriendsTask().execute(names);
-
+		Log.d(TAG, "CLICK! " + v);
+		if (v==testButton) {
+			String[] names = getContactNameFromNumber("07929169110");
+			if (names == null) Log.d(TAG, "no names");
+			else Log.d(TAG, "names=" + joinStrings(names));
+			new GetFriendsTask().execute(names);
+		} else if (v==logoutButton) {
+			forceAuthorize();
+		}
 	}
 
 	class GetFriendsTask extends AsyncTask<String[], Void, List<DisplayableFriend>> {
@@ -81,13 +74,20 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 	    private Exception exception;
 
 	    protected List<DisplayableFriend> doInBackground(String[]... name) {
+	    	List<DisplayableFriend> friends = getMatchingFriends(name[0]);
+			return friends;
+	    }
+	    
+	    
+	    	
+	    private List<DisplayableFriend> getMatchingFriends(String[] name) {	
 			ArrayList<DisplayableFriend> ret = new ArrayList<DisplayableFriend>();
 
 			try {
-				for (int j = 0; j < name[0].length; j++) {
+				for (int j = 0; j < name.length; j++) {
 					Bundle params = new Bundle();
 					params.putString("method", "fql.query");
-					String fql = "SELECT name,profile_url,pic_square FROM user WHERE name = '" + name[0][j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
+					String fql = "SELECT name,profile_url,pic_square FROM user WHERE name = '" + name[j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
 					Log.d(TAG, "FQL="+fql);
 					params.putString("query", fql);
 					String response = facebook.request(params);
@@ -117,12 +117,57 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 			return deduplicate(ret);
 		}
 
-	    protected void onPostExecute(List<DisplayableFriend> friends) {
-			for (DisplayableFriend df: friends) {
-				Log.d(TAG, "friend=" + df);
-			}
-	    }
+		@Override
+		protected void onPostExecute(List<DisplayableFriend> result) {
+    		// post to the wall
+	    	if (result.size()==1) {
+	    		new PostCallTask().execute(result.get(0).profile);
+	    	} else {
+	    		Log.e(TAG, "Missing feature: need dialog to query which user");
+	    	}
+		}
 	 }
+	
+	private void forceAuthorize() {
+		facebook.authorize(this, permissions, Facebook.FORCE_DIALOG_AUTH, new DialogListener() {
+			@Override
+			public void onComplete(Bundle values) {
+			}
+
+			@Override
+			public void onFacebookError(FacebookError error) {
+			}
+
+			@Override
+			public void onError(DialogError e) {
+			}
+
+			@Override
+			public void onCancel() {
+			}
+		});
+	}
+	
+	class PostCallTask extends AsyncTask<String, Void, Void> {
+
+		@Override
+		protected Void doInBackground(String... params) {
+			Log.d(TAG, "PostCallTask()");
+			Bundle b = new Bundle();
+			b.putString("profile", params[0]);
+			try {
+				String response = facebook.request("me/twh_call_logger:call", b);
+				Log.d(TAG, response);
+			} catch (MalformedURLException e) {
+				Log.e(TAG, "MalformedURLException " + e);
+			} catch (IOException e) {
+				Log.e(TAG, "IOException " + e);
+			}
+			return null;
+		}
+
+	}
+
 	
 	private List<DisplayableFriend> deduplicate(List<DisplayableFriend> list) {
 		Hashtable<String,Boolean> exists = new Hashtable<String, Boolean>();
