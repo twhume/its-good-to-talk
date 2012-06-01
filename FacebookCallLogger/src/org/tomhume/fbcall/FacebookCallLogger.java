@@ -109,7 +109,7 @@ public class FacebookCallLogger {
 			Log.d(TAG, "PostCallTask()");
 			Bundle b = new Bundle();
 			b.putString("profile", params[0].profile);
-			b.putString("tags", params[0].id);
+//			b.putString("tags", params[0].id);
 			try {
 				String response = facebook.request("me/twh_call_logger:call", b, "POST");
 				Log.d(TAG, response);
