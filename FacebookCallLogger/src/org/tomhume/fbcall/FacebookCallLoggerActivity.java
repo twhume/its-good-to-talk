@@ -87,7 +87,7 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 				for (int j = 0; j < name.length; j++) {
 					Bundle params = new Bundle();
 					params.putString("method", "fql.query");
-					String fql = "SELECT name,profile_url,pic_square FROM user WHERE name = '" + name[j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
+					String fql = "SELECT uid,name,profile_url,pic_square FROM user WHERE name = '" + name[j] + "' AND uid IN (SELECT uid2 FROM friend WHERE uid1 = me())";
 					Log.d(TAG, "FQL="+fql);
 					params.putString("query", fql);
 					String response = facebook.request(params);
@@ -100,6 +100,7 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 					for (int i = 0, size = data.length(); i < size; i++) {
 						JSONObject friend = data.getJSONObject(i);
 						DisplayableFriend d = new DisplayableFriend();
+						d.id = friend.getString("uid");
 						d.picture = friend.getString("pic_square");
 						d.profile = friend.getString("profile_url");
 						d.name = friend.getString("name");
@@ -121,7 +122,7 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 		protected void onPostExecute(List<DisplayableFriend> result) {
     		// post to the wall
 	    	if (result.size()==1) {
-	    		new PostCallTask().execute(result.get(0).profile);
+	    		new PostCallTask().execute(result.get(0));
 	    	} else {
 	    		Log.e(TAG, "Missing feature: need dialog to query which user");
 	    	}
@@ -148,15 +149,16 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 		});
 	}
 	
-	class PostCallTask extends AsyncTask<String, Void, Void> {
+	class PostCallTask extends AsyncTask<DisplayableFriend, Void, Void> {
 
 		@Override
-		protected Void doInBackground(String... params) {
+		protected Void doInBackground(DisplayableFriend... params) {
 			Log.d(TAG, "PostCallTask()");
 			Bundle b = new Bundle();
-			b.putString("profile", params[0]);
+			b.putString("profile", params[0].profile);
+			b.putString("tags", params[0].id);
 			try {
-				String response = facebook.request("me/twh_call_logger:call", b);
+				String response = facebook.request("me/twh_call_logger:call", b, "POST");
 				Log.d(TAG, response);
 			} catch (MalformedURLException e) {
 				Log.e(TAG, "MalformedURLException " + e);
