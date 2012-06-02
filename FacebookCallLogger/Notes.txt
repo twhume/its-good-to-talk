@@ -1,0 +1,10 @@
+next features
+
+... general look and feel
+... write presentation
+...... bob hoskins/maureen lipman -> facebook timeline -> demo -> facebook timeline + conversations
+... handle multiple matches on facebook by popping up an activity
+... set up someone else on the app
+
+
+
