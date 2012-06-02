@@ -12,7 +12,7 @@ public class PhoneCallReporter extends BroadcastReceiver {
 
 	private static final String TAG = "PhoneCallReporter";
 	
-	private static int lastCallState = TelephonyManager.CALL_STATE_IDLE;
+	private static int lastCallState[] = {TelephonyManager.CALL_STATE_IDLE,TelephonyManager.CALL_STATE_IDLE};
 
 	@Override
 	public void onReceive(Context con, Intent intent) {
@@ -24,10 +24,16 @@ public class PhoneCallReporter extends BroadcastReceiver {
 		int currentState = telephony.getCallState();
 		Log.d(TAG, "onReceive() lastState=" + lastCallState + ",currentState=" + currentState);
 
-		if ((lastCallState==TelephonyManager.CALL_STATE_IDLE) && (currentState==TelephonyManager.CALL_STATE_OFFHOOK)) {
-
+		/* If we've just finished a phone call we initiated, log it...
+		 * IDLE -> OFFHOOK -> IDLE = we made the call
+		 * IDLE -> RINGING -> OFFHOOK -> IDLE = we received the call
+		 */
+		
+		if ((lastCallState[0]==TelephonyManager.CALL_STATE_IDLE)
+			&& (lastCallState[1]==TelephonyManager.CALL_STATE_OFFHOOK)
+			&& (currentState==TelephonyManager.CALL_STATE_IDLE)) {
+			Log.d(TAG, "just finished a call we made, logging");
 			SharedPreferences prefs = con.getSharedPreferences(FacebookCallLoggerActivity.PREFS_NAME, Context.MODE_PRIVATE);
-			Log.d(TAG, "toggle state is " + prefs.getBoolean("active", false));
 			if (prefs.getBoolean("active", false)) {
 				String num = android.provider.CallLog.Calls.getLastOutgoingCall(con);
 				Log.d(TAG, "Save details for " + num);
@@ -35,8 +41,11 @@ public class PhoneCallReporter extends BroadcastReceiver {
 				i.putExtra("msisdn", num);
 				con.startService(i);
 			}
-		}
-		lastCallState = currentState;
+		} else 
+			Log.d(TAG, "no need to log action");
+
+		lastCallState[0] = lastCallState[1];
+		lastCallState[1] = currentState;
 	}
 
 }
