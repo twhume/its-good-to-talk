@@ -3,6 +3,8 @@ package org.tomhume.fbcall;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -23,11 +25,16 @@ public class PhoneCallReporter extends BroadcastReceiver {
 		Log.d(TAG, "onReceive() lastState=" + lastCallState + ",currentState=" + currentState);
 
 		if ((lastCallState==TelephonyManager.CALL_STATE_IDLE) && (currentState==TelephonyManager.CALL_STATE_OFFHOOK)) {
-			String num = android.provider.CallLog.Calls.getLastOutgoingCall(con);
-			Log.d(TAG, "getLastOutgoingCall=" + num);
-			Intent i = new Intent(con, LoggingService.class);
-			i.putExtra("msisdn", num);
-			con.startService(i);
+
+			SharedPreferences prefs = con.getSharedPreferences(FacebookCallLoggerActivity.PREFS_NAME, Context.MODE_PRIVATE);
+			Log.d(TAG, "toggle state is " + prefs.getBoolean("active", false));
+			if (prefs.getBoolean("active", false)) {
+				String num = android.provider.CallLog.Calls.getLastOutgoingCall(con);
+				Log.d(TAG, "Save details for " + num);
+				Intent i = new Intent(con, LoggingService.class);
+				i.putExtra("msisdn", num);
+				con.startService(i);
+			}
 		}
 		lastCallState = currentState;
 	}
