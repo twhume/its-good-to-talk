@@ -30,13 +30,13 @@ public class FacebookCallLoggerActivity extends Activity implements OnClickListe
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		toggler = (ToggleButton) findViewById(R.id.toggleButton1);
+		toggler = (ToggleButton) findViewById(R.id.toggleButton);
 		SharedPreferences prefs = this.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 		toggler.setChecked(prefs.getBoolean("active", false));
 		toggler.setOnClickListener(this);
 		
-		testButton = (Button) findViewById(R.id.test_button);
-		testButton.setOnClickListener(this);
+//		testButton = (Button) findViewById(R.id.test_button);
+//		testButton.setOnClickListener(this);
 
 		logoutButton = (Button) findViewById(R.id.logout_button);
 		logoutButton.setOnClickListener(this);

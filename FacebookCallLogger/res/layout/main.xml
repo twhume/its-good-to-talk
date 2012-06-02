@@ -5,14 +5,36 @@
     android:layout_gravity="center"
     android:orientation="vertical" >
 
-    <ToggleButton
-        android:id="@+id/toggleButton1"
+    <ImageView
+        android:id="@+id/imageView1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:scaleType="centerCrop"
+        android:layout_marginBottom="14dp"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/bob" />
+
+    <TextView
+        android:id="@+id/textView1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:layout_gravity="center"
-        android:text="ToggleButton" />
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:layout_marginBottom="14dp"
+        android:text="Bob wants to post onto your Facebook page, whenever you call one of your Facebook friends. He promises not to do anything naughty."
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/textView1"
+        android:layout_marginBottom="14dp"
+        android:text="Are you comfortable with that?"
+        android:textAppearance="?android:attr/textAppearanceMedium" />
+    
     <Button
         android:id="@+id/logout_button"
         android:layout_width="match_parent"
@@ -21,13 +43,14 @@
         android:layout_alignParentLeft="true"
         android:text="Logout" />
 
-    <Button
-        android:id="@+id/test_button"
-        android:layout_width="match_parent"
+    <ToggleButton
+        android:id="@+id/toggleButton"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/logout_button"
-        android:layout_alignParentLeft="true"
-        android:layout_marginBottom="16dp"
-        android:text="Test" />
-    
+        android:layout_below="@+id/textView2"
+        android:layout_centerHorizontal="true"
+        android:text="ToggleButton"
+        android:textOff="No"
+        android:textOn="Yes" />
+
 </RelativeLayout>

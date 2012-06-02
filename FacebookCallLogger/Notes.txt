@@ -1,10 +1,13 @@
 next features
 
-... general look and feel
+....only show logout button if logged in
 ... write presentation
-...... bob hoskins/maureen lipman -> facebook timeline -> demo -> facebook timeline + conversations
+...... bob hoskins/maureen lipman -> facebook timeline, missing calls -> demo -> facebook timeline with calls and conversations -> use cases
 ... handle multiple matches on facebook by popping up an activity
 ... set up someone else on the app
 
 
+
+It's Good To Talk
+Bob wants to post to Facebook whenever you call one of your Facebook friends.
 
